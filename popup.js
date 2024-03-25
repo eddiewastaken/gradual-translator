@@ -1,5 +1,4 @@
-document.getElementById('enable').addEventListener('change', sendValues);
-document.getElementById('slider').addEventListener('input', sendValues);
+document.getElementById('save').addEventListener('click', sendValues);
 
 function sendValues() {
     const enableValue = document.getElementById('enable').checked;

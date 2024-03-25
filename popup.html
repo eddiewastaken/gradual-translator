@@ -6,12 +6,21 @@
         body {
             width: 200px;
             height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        input, button {
+            width: 100%;
         }
     </style>
 </head>
 <body>
     <input type="checkbox" id="enable">
     <input type="range" id="slider" min="1" max="100" value="1">
+    <button id="save">Save</button>
     <script src="popup.js"></script>
 </body>
 </html>
