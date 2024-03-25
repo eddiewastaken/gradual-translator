@@ -103,15 +103,28 @@ function performReplacement() {
     }
 }
 
+// Add listener for preference changes by user
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+    if (request.enable !== undefined) {
+        // Use the enable value
+        console.log("Enable value:", request.enable);
+		enable = request.enable;
+    }
+    if (request.slider !== undefined) {
+        // Use the slider value
+        console.log("Slider value:", request.slider);
+    }
+});
+
 // Define the word list
-const wordsToReplace = [' and ', ' of ', ' or '];
+const wordsToReplace = ['and', 'of', 'or'];
 
 // Create an Aho-Corasick machine
 const ac = new AhoCorasick();
 
 // Add patterns to the Aho-Corasick machine
 wordsToReplace.forEach(word => {
-    ac.addPattern(word, word); // The output is the word itself for simplicity
+	ac.addPattern(" " + word + " ", " " + word + " "); // The output is the word itself for simplicity
 });
 
 // Build the failure function
@@ -120,8 +133,8 @@ ac.buildFailureFunction();
 // Set up the MutationObserver
 const observer = new MutationObserver(performReplacement);
 observer.observe(document.body, {
-    childList: true,
-    subtree: true
+	childList: true,
+	subtree: true
 });
 
 // Perform the initial replacement

@@ -1,12 +1,15 @@
 {
-"name":"Translator",
-"description":"Translate text from one language to another",
-"version": "0.1",
-"manifest_version":2,
-"content_scripts":[
-{
-"matches":["<all_urls>"],
-"js":["content.js"]
-}
-]
+	"name":"Gradual Translator",
+	"description":"Translate some portion of the page you're viewing",
+	"version": "0.1",
+	"manifest_version":3,
+	"action": {
+        "default_popup": "popup.html"
+    },
+	"content_scripts":[
+		{
+			"matches":["<all_urls>"],
+			"js":["content.js"]
+		}
+	]
 }
