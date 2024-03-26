@@ -79,7 +79,7 @@ class AhoCorasick {
     }
 }
 
-function performReplacement() {
+function performReplacement(ahoCorasick) {
     // Use a TreeWalker to find text nodes
     const treeWalker = document.createTreeWalker(
         document.body,
@@ -94,13 +94,22 @@ function performReplacement() {
         let nodeValue = textNode.nodeValue;
 
         // Use the Aho-Corasick algorithm to find matches
-        ac.search(nodeValue, (index, output) => {
+        ahoCorasick.search(nodeValue, (index, output) => {
             // Replace the matched word with "hello"
             nodeValue = nodeValue.substring(0, index) + ' hello ' + nodeValue.substring(index + output.length);
         });
 
         textNode.nodeValue = nodeValue;
     }
+}
+
+function readTextFile(filePath) {
+    const url = chrome.runtime.getURL(filePath);
+
+    return fetch(url)
+        .then(response => response.text())
+        .then(text => text.split('\n'))
+        .catch(error => console.error('Error fetching file:', error));
 }
 
 // Add listener for preference changes by user
@@ -116,26 +125,33 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     }
 });
 
-// Define the word list
-const wordsToReplace = ['and', 'of', 'or'];
+// Read text file
+readTextFile('google-10000-english.txt').then(lines => {
+    console.log(lines);
 
-// Create an Aho-Corasick machine
-const ac = new AhoCorasick();
+    // Define the word list
+    const wordsToReplace = ['and', 'of', 'or'];
 
-// Add patterns to the Aho-Corasick machine
-wordsToReplace.forEach(word => {
-	ac.addPattern(" " + word + " ", " " + word + " "); // The output is the word itself for simplicity
+    // Create an Aho-Corasick machine
+    const ac = new AhoCorasick();
+
+    // Add patterns to the Aho-Corasick machine
+    wordsToReplace.forEach(word => {
+    	ac.addPattern(" " + word + " ", " " + word + " "); // The output is the word itself for simplicity
+    });
+
+    // Build the failure function
+    ac.buildFailureFunction();
+
+    // Set up the MutationObserver
+    const observer = new MutationObserver(() => {
+        performReplacement(ac);
+    });
+    observer.observe(document.body, {
+    	childList: true,
+    	subtree: true
+    });
+
+    // Perform the initial replacement
+    performReplacement(ac);
 });
-
-// Build the failure function
-ac.buildFailureFunction();
-
-// Set up the MutationObserver
-const observer = new MutationObserver(performReplacement);
-observer.observe(document.body, {
-	childList: true,
-	subtree: true
-});
-
-// Perform the initial replacement
-performReplacement();
