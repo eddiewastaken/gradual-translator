@@ -1,105 +1,37 @@
-class AhoCorasickNode {
+class TrieNode {
     constructor() {
         this.children = {};
-        this.output = [];
-        this.failure = null;
+        this.isEndOfWord = false;
     }
 }
 
-class AhoCorasick {
+class Trie {
     constructor() {
-        this.root = new AhoCorasickNode();
+        this.root = new TrieNode();
     }
 
-    addPattern(pattern, output) {
+    insert(word) {
         let node = this.root;
-
-        for (const char of pattern) {
+        for (let i = 0; i < word.length; i++) {
+            let char = word[i];
             if (!node.children[char]) {
-                node.children[char] = new AhoCorasickNode();
+                node.children[char] = new TrieNode();
             }
             node = node.children[char];
         }
-
-        node.output.push(output);
+        node.isEndOfWord = true;
     }
 
-    buildFailureFunction() {
-        const queue = [];
-
-        // Set failure for depth 1 nodes to root
-        for (const child in this.root.children) {
-            this.root.children[child].failure = this.root;
-            queue.push(this.root.children[child]);
-        }
-
-        while (queue.length > 0) {
-            const currentNode = queue.shift();
-
-            for (const key in currentNode.children) {
-                const child = currentNode.children[key];
-                queue.push(child);
-
-                let failureNode = currentNode.failure;
-
-                while (failureNode !== null &&
-                    !failureNode.children[key]) {
-                    failureNode = failureNode.failure;
-                }
-
-                child.failure = failureNode ?
-                    failureNode.children[key] ||
-                    this.root : this.root;
-
-                child.output = child.output.
-                concat(child.failure.output);
+    search(word) {
+        let node = this.root;
+        for (let i = 0; i < word.length; i++) {
+            let char = word[i];
+            if (!node.children[char]) {
+                return false;
             }
+            node = node.children[char];
         }
-    }
-
-    search(text, callback) {
-        let currentNode = this.root;
-
-        for (let i = 0; i < text.length; i++) {
-            const char = text[i];
-
-            while (currentNode !== null &&
-                !currentNode.children[char]) {
-                currentNode = currentNode.failure;
-            }
-
-            currentNode = currentNode ?
-                currentNode.children[char] ||
-                this.root : this.root;
-
-            for (const output of currentNode.output) {
-                callback(i - output.length + 1, output);
-            }
-        }
-    }
-}
-
-function performReplacement(ahoCorasick) {
-    // Use a TreeWalker to find text nodes
-    const treeWalker = document.createTreeWalker(
-        document.body,
-        NodeFilter.SHOW_TEXT,
-        null,
-        false
-    );
-
-    // Iterate over text nodes and replace words
-    while (treeWalker.nextNode()) {
-        const textNode = treeWalker.currentNode;
-        let nodeValue = textNode.nodeValue;
-
-        // Use the Aho-Corasick algorithm to find matches
-        ahoCorasick.search(nodeValue, (index, output) => {
-            // Replace the matched word with "hello"
-            nodeValue = nodeValue.substring(0, index) + ' hello ' + nodeValue.substring(index + output.length);
-        });
-
-        textNode.nodeValue = nodeValue;
+        return node.isEndOfWord;
     }
 }
 
@@ -110,6 +42,21 @@ function readTextFile(filePath) {
         .then(response => response.text())
         .then(text => text.split('\n'))
         .catch(error => console.error('Error fetching file:', error));
+}
+
+function replaceTextInNode(node, wordsToReplace) {
+ const text = node.nodeValue;
+ const re = new RegExp(`(?:(?<!\\w)\\b(${wordsToReplace.join("|")})\\b(?!\\w))`, "gi");
+ node.nodeValue = text.replace(re, function(matched) {
+    return "hello";
+ });
+}
+
+function performFindAndReplace(wordsToReplace) {
+ const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+ while (walker.nextNode()) {
+    replaceTextInNode(walker.currentNode, wordsToReplace);
+ }
 }
 
 // Add listener for preference changes by user
@@ -125,33 +72,27 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     }
 });
 
-// Read text file
+// Main
 readTextFile('google-10000-english.txt').then(lines => {
     console.log(lines);
 
     // Define the word list
     const wordsToReplace = ['and', 'of', 'or'];
 
-    // Create an Aho-Corasick machine
-    const ac = new AhoCorasick();
+    // Create a new Trie
+    const trie = new Trie();
 
-    // Add patterns to the Aho-Corasick machine
-    wordsToReplace.forEach(word => {
-    	ac.addPattern(" " + word + " ", " " + word + " "); // The output is the word itself for simplicity
-    });
+    // Add words to the Trie
+    for (const word in wordsToReplace) {
+        trie.insert(word);
+    }
 
-    // Build the failure function
-    ac.buildFailureFunction();
+    // Initial find + replace
+    performFindAndReplace(wordsToReplace);
 
-    // Set up the MutationObserver
+    // Register observer with callback for in-place DOM reloading
     const observer = new MutationObserver(() => {
-        performReplacement(ac);
+        performFindAndReplace(wordsToReplace);
     });
-    observer.observe(document.body, {
-    	childList: true,
-    	subtree: true
-    });
-
-    // Perform the initial replacement
-    performReplacement(ac);
+    observer.observe(document.body, {attributes: false, childList: true, subtree: true});
 });
